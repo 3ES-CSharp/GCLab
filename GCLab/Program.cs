@@ -6,10 +6,25 @@ class Program
     // Os alunos devem implementar as correções para chegar ao final com "GC limpo".
     static void Main()
     {
+        var tracker = new IssueTracker();
+
+        ExectuteWorks(tracker);
+
+        // Força coletas e verifica sobreviventes
+        GCHelpers.FullCollect();
+        tracker.Report();
+
+        Console.WriteLine(tracker.HasSurvivors
+            ? "\n❌ Existem sobreviventes indesejados. Sua missão: corrigir o código e rodar novamente."
+            : "\n✅ GC limpo: nenhuma referência indesejada permaneceu viva.");
+    }
+
+    static void ExectuteWorks(IssueTracker tracker)
+    {
         Console.WriteLine("=== GCLab - Versão com Problemas ===");
         Console.WriteLine($"GC Server Mode: {System.Runtime.GCSettings.IsServerGC}\n");
 
-        var tracker = new IssueTracker();
+        
 
         // 1) Vazamento por evento não desinscrito
         var publisher = new Publisher();
@@ -30,7 +45,7 @@ class Program
         Console.WriteLine($"Payload length: {payload.Length}");
 
         // 5) Recurso externo sem Dispose (usar finalizer como 'rede de segurança')
-        var logger = new Logger("log.txt");
+        using var logger = new Logger("log.txt");
         logger.WriteLines(10);
         tracker.Track("logger", logger);
 
@@ -38,18 +53,15 @@ class Program
         publisher.Raise();
 
         // Remover referências locais (mas problemas permanecem)
-        subscriber = null;
+        subscriber.Dispose();
+        LeakySubscriber.ClearRegistry();
         publisher = null;
+        pinner.Dispose();
+        pinner = null;
         pinned = null;
-        logger = null;
+        logger.Dispose();
         lohBuffer = null;
-
-        // Força coletas e verifica sobreviventes
-        GCHelpers.FullCollect();
-        tracker.Report();
-
-        Console.WriteLine(tracker.HasSurvivors
-            ? "\n❌ Existem sobreviventes indesejados. Sua missão: corrigir o código e rodar novamente."
-            : "\n✅ GC limpo: nenhuma referência indesejada permaneceu viva.");
+        BigBufferHolder.ClearCache();
+        GlobalCache.Clear();
     }
 }

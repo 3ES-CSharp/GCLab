@@ -5,10 +5,17 @@
 // =====================================================
 static class BigBufferHolder
 {
+    private static readonly List<byte[]> _cache = new();
+
     public static byte[] Run()
     {        
-        var data = new byte[200_000]; // ~200KB → LOH
-        GlobalCache.Add(data);
+        var data = new byte[100_000]; // ~100KB → LOH
+        _cache.Add(data);
         return data;
+    }
+
+    public static void ClearCache()
+    {
+        _cache.Clear();
     }
 }
